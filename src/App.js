@@ -1,19 +1,7 @@
-import React, {useState, useEffect, useRef, useReducer} from 'react';
+import React, {useState, useEffect, useReducer, useCallback} from 'react';
 import './App.scss';
 
-
-//after calculating, use numberAmount func to find number of whole digits and decimal places
-  //use this number to calculate the fontSize until a certain point (minimum font size)
-    //if too small or large, use scientific notation
-  //add fontSize func for when doing calculations, otherwise use reducer
-
-//change toFixed num to var to take into account the input length
-  //add scientific notation for very small and large numbers
-
-
-//fix event listeners for keydown presses
-
-
+//fix enter key
 
 //if the calcualtor is dragged off the 'table' it will fall off (useEffect hook, using mouse position as a state change?)
   //have this be a check for the mini game/scavenger hunt?
@@ -50,96 +38,29 @@ import './App.scss';
 
 const initialDisplaySize = {fontSize: "40px"};
 
-function reducer(state, action) {
-  // console.log(state)
-  switch (action.type) {
-    case 'increaseSize':
-      console.log(state.fontSize, 'do add 3')
-      return {fontSize: (parseInt(state.fontSize.slice(0,-2)) + 3).toString() + 'px'};
-    case 'decreaseSize':
-      console.log(state.fontSize, 'do subtract 3')
-      return {fontSize: (parseInt(state.fontSize.slice(0,-2)) - 3).toString() + 'px'};
-    case 'reset':
-        return {fontSize: '40px'};
-    default:
-      throw new Error();
-  }
-}
-
+// function reducer(state, action) {
+//   switch (action.type) {
+//     case 'increaseSize':
+//       console.log(state.fontSize, 'do add 3')
+//       return {fontSize: (parseInt(state.fontSize.slice(0,-2)) + 3).toString() + 'px'};
+//     case 'decreaseSize':
+//       console.log(state.fontSize, 'do subtract 3')
+//       return {fontSize: (parseInt(state.fontSize.slice(0,-2)) - 3).toString() + 'px'};
+//     case 'reset':
+//         return {fontSize: '40px'};
+//     default:
+//       throw new Error();
+//   }
+// }
 
 function App() {
   const [input, setInput] = useState(["0"]);
-  // const [inputSize, setInputSize] = useState(0); 
+  const [inputSize, setInputSize] = useState(1); 
   // const [whichButton, setWhichButton] = useState(""); use for checking if last operation was equals to run equals operation again
-  const lastInputLength = useRef(1);
-  const [state, dispatch] = useReducer(reducer, initialDisplaySize);
- 
-  useEffect(() => { //adds too many event listeners
-    window.addEventListener('keydown', (e) => { //when user clicks different key other than those listed below, event listener doesnt work anymore as it needs a new render
-      if (Number.isNaN(input[0])) return;
-      // setWhichButton(e.key);
-      let keycode = e.which;
-      if(keycode >= 48 && keycode <= 57 && e.shiftKey === false) {
-        handleNumberInput(e.key);
-      }
-      if (e.key === '+' && e.shiftKey === true) handleOperation('+');
-      switch (e.key) {
-        case '/':
-          handleOperation('÷');
-          break;
-        case 'x':
-          handleOperation('x');
-          break;
-        case '*':
-          handleOperation('x');
-          break;
-        case '.':
-          handleNumberInput('.');
-          break;
-        case '=':
-          handleEquals();
-          break;
-        case 'Enter': //repeats last character inputted somehow
-          handleEquals(); 
-          break;
-        case '-':
-          handleOperation('-');
-          break;
-        case '+':
-            handleOperation('+');
-            break;
-        case 'Backspace':
-          handleBackSpace();
-          break;
-        default:
-          break;
-      }
-      e.preventDefault();
-    }, {once: true});
-  });
+  const [state, sizeDispatch] = useReducer(sizeReducer, initialDisplaySize);
 
-  useEffect(() => {
-    dragElement(document.getElementById("calculator"));
-  }, []);
-  
-  useEffect(() => { 
-    //if (typeof input[0] === 'number') add decimal place/integer size to both input lengths
-    if (!(input.length >= 14 && input.length % 2 === 0)) { //this is if no calc was done yet
-      if (input.length > 7) {
-        if (input.length > lastInputLength.current) { 
-          dispatch({type: 'decreaseSize'});
-        } else {
-          dispatch({type: 'increaseSize'});
-        }
-      }
-      if (lastInputLength.current === 7) {
-        dispatch({type: 'reset'});
-      }
-    }
-    lastInputLength.current = input.length;
-}, [input]);
-
-  const handleNumberInput = (e) => {
+  const handleNumberInput = useCallback((e) => {
+    if (inputSize > 24) return;
     if (Number.isNaN(input[0])) return;
     let buttonValue = '';
     if (typeof e === 'string') {
@@ -157,12 +78,15 @@ function App() {
         } else {
           setInput(input.concat(buttonValue))
       }
-  }
+  }, [input, inputSize]);
+
   const handleClear = () => {
     setInput(['0']);
-    dispatch({type: 'reset'});
+    sizeDispatch({type: 'reset'});
   }
-  const handleOperation = (e) => { 
+  
+  const handleOperation = useCallback((e) => { 
+    if (inputSize > 23) return;
     if (Number.isNaN(input[0])) return;
     let buttonValue = '';
     if (typeof e === 'string') {
@@ -199,19 +123,17 @@ function App() {
     } else {
       setInput(input.slice(0,-1).concat(buttonValue));
     } 
-}
-  const handleEquals = () => { //use past operation on current input (if implemented)
+}, [input, inputSize]);
+
+  const handleEquals = useCallback(() => { //use past operation on current input (if implemented)
     if (Number.isNaN(input[0])) return;
-    // if (whichButton === '=' || whichButton === 'Enter') {
-  
-    // } else 
     var lastInput = input[input.length - 1];
     if (input.length === 1 || (!input.includes('x') && !input.includes('+') && !input.includes('-') && !input.includes('÷'))) return; 
     if (lastInput === 'x' || lastInput === '+' || lastInput === '-' || lastInput === '÷' ) return;
     else setInput(calculate(input));
-    //run font size function
-  }
-  const handleBackSpace = () => {
+  }, [input]);
+  
+  const handleBackSpace = useCallback(() => {
     console.log('backspace')
     if (typeof input[0] === 'number') {
       var tempInput = input[0].toString()
@@ -219,7 +141,117 @@ function App() {
     } else if (input[0] === '0' && input.length === 1) return;
         else setInput(input.slice(0,-1));
     if (input.length === 0) handleClear();
+  }, [input]);
+
+  useEffect(() => {
+    const keyListen = (e) => {
+      if (Number.isNaN(input[0])) return;
+      let keycode = e.which;
+      if(keycode >= 48 && keycode <= 57 && e.shiftKey === false) {
+        handleNumberInput(e.key);
+      }
+      // } else setInput(input); //else force a re-render here
+      if (e.key === '+' && e.shiftKey === true) handleOperation('+');
+      switch (e.key) {
+        case '/':
+          handleOperation('÷');
+          break;
+        case 'x':
+          handleOperation('x');
+          break;
+        case '*':
+          handleOperation('x');
+          break;
+        case '.':
+          handleNumberInput('.');
+          break;
+        case '=':
+          handleEquals();
+          break;
+        // case 'Enter': //messes everything up, look at
+        //   handleEquals(); 
+        //   break;
+        case '-':
+          handleOperation('-');
+          break;
+        case '+':
+          handleOperation('+');
+          break;
+        case 'Backspace':
+          handleBackSpace();
+          break;
+        default:
+          break;
+      }
+    };
+    document.addEventListener('keydown', keyListen);
+
+    return () => {
+      console.log('test');
+        document.removeEventListener('keydown', keyListen);
+    };
+  }, [handleBackSpace, handleEquals, handleNumberInput, handleOperation, input]);
+
+  useEffect(() => { 
+    console.log(input);
+    setInputSize(input[0].toString().length - 1 + input.length);
+    if (inputSize >= 9) { //add another if statement, if length is certain length, maintain specific fontsize even if length becomes longer
+      sizeDispatch({type: 'changeSize'});
+    }
+  }, [input, inputSize]);
+
+  useEffect(() => {
+    dragElement(document.getElementById("calculator"));
+  }, []);
+
+  function sizeReducer(state, action) {
+    switch (action.type) {
+      case 'changeSize': 
+        switch (inputSize) {
+          case 9:
+            return {fontSize: '36px'}; 
+          case 10: 
+            return {fontSize: '32px'};
+          case 11:
+            return {fontSize: '32px'};
+          case 12: 
+            return {fontSize: '28px'};
+          case 13:
+            return {fontSize: '24px'};
+          case 14: 
+            return {fontSize: '24px'};
+          case 15:
+            return {fontSize: '20px'};
+          case 16: 
+            return {fontSize: '20px'};
+          case 17: 
+            return {fontSize: '20px'};
+          case 18: 
+            return {fontSize: '20px'};
+          case 19: 
+            return {fontSize: '16px'};
+          case 20: 
+            return {fontSize: '16px'};
+          case 21: 
+            return {fontSize: '16px'};
+          case 22: 
+            return {fontSize: '16px'};
+          case 23: 
+            return {fontSize: '14px'};
+          case 24: 
+            return {fontSize: '14px'};
+          case 25: 
+            return {fontSize: '14px'};
+          default:
+            return {fontSize: '40px'};
+        }
+      case 'reset':
+          return {fontSize: '40px'};
+      default:
+    }
   }
+
+  
   const minimize = () => {
     document.body.classList.add('minimize');
 
@@ -349,7 +381,6 @@ const calculate = (input) => {
     }
   } 
   var decimalAmount = decimalPlaces(inputCopy[0]);
-  console.log(decimalAmount)
   inputCopy[0] = +inputCopy[0].toFixed(8); //plus sign gets rid of trailing zeroes, rounds to 8th decimal place
   //run numberAmount func
   return inputCopy;
