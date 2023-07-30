@@ -1,7 +1,7 @@
-import React, {useState, useEffect, useReducer, useCallback} from 'react';
+import React, {useState, useEffect, useReducer, useCallback, useRef} from 'react';
 import './App.scss';
 
-//fix enter key
+
 
 //if the calcualtor is dragged off the 'table' it will fall off (useEffect hook, using mouse position as a state change?)
   //have this be a check for the mini game/scavenger hunt?
@@ -17,6 +17,8 @@ import './App.scss';
 
 //add history of operations?
 
+//fix format
+
 //add 3 buttons for delete, minimize, and extend calculator
   //after deleting calculator, place big letters in center of screen saying "Oops now it's gone"
     //check if user has cookies enabled
@@ -30,57 +32,56 @@ import './App.scss';
       //have a checklist that if user tries all 3 methods and tries to do another, bring up a button that resets everything that says "fine you can have it back"
   //after minimizing the calculator, create animation that sucks up calculator into the bottom of the screen?
     //need to keep track of element position before minimize to but it back where it was?
+
   //after extending the calculator,
     //add buttons (), sin, cos, tan, x^2 etc...
-      //add factorial(!), sin, cos, tan, ln, log, e^, square root, cubed root, n root?, exponent(^), parentheses(creates opening and closing), pi, fraction (1/x), scienfitic notation (EE)
+      //add factorial(!), 10^ , sin, cos, tan, ln, log, e^, square root, cubed root, n root?, exponent(^), parentheses(creates opening and closing), pi, scienfitic notation (EE)
     //wont implemenet actual functionality so just add to input saying "will be added later" or something similar "forget about ittttt"
-  
+
+
 
 const initialDisplaySize = {fontSize: "40px"};
 
-// function reducer(state, action) {
-//   switch (action.type) {
-//     case 'increaseSize':
-//       console.log(state.fontSize, 'do add 3')
-//       return {fontSize: (parseInt(state.fontSize.slice(0,-2)) + 3).toString() + 'px'};
-//     case 'decreaseSize':
-//       console.log(state.fontSize, 'do subtract 3')
-//       return {fontSize: (parseInt(state.fontSize.slice(0,-2)) - 3).toString() + 'px'};
-//     case 'reset':
-//         return {fontSize: '40px'};
-//     default:
-//       throw new Error();
-//   }
-// }
 
 function App() {
   const [input, setInput] = useState(["0"]);
   const [inputSize, setInputSize] = useState(1); 
-  // const [whichButton, setWhichButton] = useState(""); use for checking if last operation was equals to run equals operation again
+  const [whichButton, setWhichButton] = useState("");
+  const [extendStyle, setExtendStyle] = useState(false); //indicate if calculator is extended or not
   const [state, sizeDispatch] = useReducer(sizeReducer, initialDisplaySize);
+  const enterKey = useRef(false); //have to use to flag when the enter key is used
+  
 
-  const handleNumberInput = useCallback((e) => {
-    if (inputSize > 24) return;
-    if (Number.isNaN(input[0])) return;
+  const handleNumberInput = useCallback((e) => { 
+    if (enterKey.current === true) {
+      enterKey.current = false;
+      return;
+    }
+    if (inputSize > 24) return; 
+    //if (Number.isNaN(input[0])) return;
     let buttonValue = '';
     if (typeof e === 'string') {
       buttonValue = e;
     } else {
       buttonValue = e.target.value;
     }
-    // setWhichButton(buttonValue);
     if(buttonValue === '.' && input.length >= 1) { 
         if(decimalCheck(input)) {
           setInput(input.concat(buttonValue));
         }
-    } else if (input[0] === '0' && input.length === 1 && buttonValue !== '.') {
+    } else if ((input[0] === "0" && input.length === 1 && buttonValue !== '.') || whichButton === "equals") {
           setInput([buttonValue]);
         } else {
           setInput(input.concat(buttonValue))
       }
-  }, [input, inputSize]);
+      setWhichButton(buttonValue);
+  }, [input, inputSize, whichButton]);
 
   const handleClear = () => {
+    if (enterKey.current === true) {
+      enterKey.current = false;
+      return;
+    }
     setInput(['0']);
     sizeDispatch({type: 'reset'});
   }
@@ -94,6 +95,7 @@ function App() {
     } else {
       buttonValue = e.target.value;
     }
+    setWhichButton(buttonValue);
     if (buttonValue === 'fraction') {
       if (input.includes('+') || input.includes('-') || input.includes('x') || input.includes('÷')) return;
       else {
@@ -103,7 +105,6 @@ function App() {
       }
       return;
     }
-    // setWhichButton(buttonValue);
     var lastInput = input[input.length - 1];
     if ((input.length === 1 && input[0] === '-') || lastInput === '.') return;
     if (buttonValue === '-') {
@@ -126,32 +127,36 @@ function App() {
 }, [input, inputSize]);
 
   const handleEquals = useCallback(() => { //use past operation on current input (if implemented)
+    setWhichButton("equals");
     if (Number.isNaN(input[0])) return;
     var lastInput = input[input.length - 1];
     if (input.length === 1 || (!input.includes('x') && !input.includes('+') && !input.includes('-') && !input.includes('÷'))) return; 
     if (lastInput === 'x' || lastInput === '+' || lastInput === '-' || lastInput === '÷' ) return;
-    else setInput(calculate(input));
+    else {
+      var temp = calculate(input);
+      setInput(temp);
+    }
   }, [input]);
   
   const handleBackSpace = useCallback(() => {
-    console.log('backspace')
-    if (typeof input[0] === 'number') {
+    setWhichButton("backspace");
+    if (input.length === 1 && typeof input[0] === "string") {
+      handleClear();
+    }
+     else if (typeof input[0] === 'number' && input.length === 1) {
       var tempInput = input[0].toString()
       setInput(tempInput.slice(0,-1));
-    } else if (input[0] === '0' && input.length === 1) return;
-        else setInput(input.slice(0,-1));
-    if (input.length === 0) handleClear();
+    } else setInput(input.slice(0,-1));
   }, [input]);
 
-  useEffect(() => {
+  useEffect(() => { 
     const keyListen = (e) => {
-      if (Number.isNaN(input[0])) return;
       let keycode = e.which;
       if(keycode >= 48 && keycode <= 57 && e.shiftKey === false) {
         handleNumberInput(e.key);
       }
-      // } else setInput(input); //else force a re-render here
-      if (e.key === '+' && e.shiftKey === true) handleOperation('+');
+      // } else setInput(input); // force a re-render here?
+      //if (e.key === '+' && e.shiftKey === true) handleOperation('+');
       switch (e.key) {
         case '/':
           handleOperation('÷');
@@ -168,9 +173,10 @@ function App() {
         case '=':
           handleEquals();
           break;
-        // case 'Enter': //messes everything up, look at
-        //   handleEquals(); 
-        //   break;
+        case 'Enter':
+          enterKey.current = true; 
+          handleEquals(); //something wrong here with enter
+          break;
         case '-':
           handleOperation('-');
           break;
@@ -185,92 +191,179 @@ function App() {
       }
     };
     document.addEventListener('keydown', keyListen);
-
     return () => {
-      console.log('test');
         document.removeEventListener('keydown', keyListen);
     };
-  }, [handleBackSpace, handleEquals, handleNumberInput, handleOperation, input]);
+  }, [handleBackSpace, handleEquals, handleNumberInput, handleOperation]); 
 
-  useEffect(() => { 
-    console.log(input);
+  useEffect(() => {
     setInputSize(input[0].toString().length - 1 + input.length);
-    if (inputSize >= 9) { //add another if statement, if length is certain length, maintain specific fontsize even if length becomes longer
+    if (inputSize >= 9) { 
       sizeDispatch({type: 'changeSize'});
     }
-  }, [input, inputSize]);
+  }, [input, inputSize, extendStyle]);
 
   useEffect(() => {
     dragElement(document.getElementById("calculator"));
   }, []);
 
-  function sizeReducer(state, action) {
+  function sizeReducer(state, action) { //add sizes for depending on if calculator is extended or not
     switch (action.type) {
       case 'changeSize': 
-        switch (inputSize) {
-          case 9:
-            return {fontSize: '36px'}; 
-          case 10: 
-            return {fontSize: '32px'};
-          case 11:
-            return {fontSize: '32px'};
-          case 12: 
-            return {fontSize: '28px'};
-          case 13:
-            return {fontSize: '24px'};
-          case 14: 
-            return {fontSize: '24px'};
-          case 15:
-            return {fontSize: '20px'};
-          case 16: 
-            return {fontSize: '20px'};
-          case 17: 
-            return {fontSize: '20px'};
-          case 18: 
-            return {fontSize: '20px'};
-          case 19: 
-            return {fontSize: '16px'};
-          case 20: 
-            return {fontSize: '16px'};
-          case 21: 
-            return {fontSize: '16px'};
-          case 22: 
-            return {fontSize: '16px'};
-          case 23: 
-            return {fontSize: '14px'};
-          case 24: 
-            return {fontSize: '14px'};
-          case 25: 
-            return {fontSize: '14px'};
-          default:
-            return {fontSize: '40px'};
-        }
+        switch (extendStyle) {
+          case true:
+            switch (inputSize) {
+              case 16: 
+                return {fontSize: '36px'};
+              case 17: 
+                return {fontSize: '32px'};
+              case 18: 
+                return {fontSize: '32px'};
+              case 19: 
+                return {fontSize: '32px'};
+              case 20: 
+                return {fontSize: '28px'};
+              case 21: 
+                return {fontSize: '28px'};
+              case 22: 
+                return {fontSize: '24px'};
+              case 23: 
+                return {fontSize: '24px'};
+              case 24: 
+                return {fontSize: '24px'};
+              case 25: 
+                return {fontSize: '24px'};
+              default:
+                return {fontSize: '40px'};
+            }
+            case false:
+              switch (inputSize) {
+                case 9:
+                  return {fontSize: '36px'}; 
+                case 10: 
+                  return {fontSize: '32px'};
+                case 11:
+                  return {fontSize: '32px'};
+                case 12: 
+                  return {fontSize: '28px'};
+                case 13:
+                  return {fontSize: '24px'};
+                case 14: 
+                  return {fontSize: '24px'};
+                case 15:
+                  return {fontSize: '20px'};
+                case 16: 
+                  return {fontSize: '20px'};
+                case 17: 
+                  return {fontSize: '20px'};
+                case 18: 
+                  return {fontSize: '20px'};
+                case 19: 
+                  return {fontSize: '16px'};
+                case 20: 
+                  return {fontSize: '16px'};
+                case 21: 
+                  return {fontSize: '16px'};
+                case 22: 
+                  return {fontSize: '16px'};
+                case 23: 
+                  return {fontSize: '14px'};
+                case 24: 
+                  return {fontSize: '14px'};
+                case 25: 
+                  return {fontSize: '14px'};
+                default:
+                  return {fontSize: '40px'};
+              }
+            default:
+              return {fontSize: '40px'};
+          }
       case 'reset':
           return {fontSize: '40px'};
       default:
     }
   }
 
-  
-  const minimize = () => {
+  const minimize = () => { //minimize animation
     document.body.classList.add('minimize');
-
+    // document.body.classList.remove('minimize');
   }
   const maximize = () => {
-    document.body.classList.remove('minimize');
-
-  }
+    setExtendStyle(!extendStyle);
+  }  
+  if (extendStyle === true) {
+    return (
+      <div id = 'container'>
+        <div id = 'calculatorExtended'>
+          <nav className = 'window-controls'>
+            <div className = 'maximize'>Calculator</div>
+            <div className = 'minimize'></div>
+          </nav>
+          <div id = 'calculatorheaderExtended'>
+            <button>x</button>
+            <button onClick={()=> minimize()}>-</button>
+            <button onClick={() => maximize()}>+</button>
+          </div>
+            <div id = 'displayExtended' style={state}>{input}</div>
+            <div className = 'btn-row'> 
+              <button className='btn-ind-small'>sin</button>
+              <button className='btn-ind-small'>cos</button>
+              <button className='btn-ind-small'>tan</button>
+              <button onClick = {()=> handleClear()} className =  'btn-ind-medium' id =  'clear'>Clear</button>
+              <button value = {'fraction'} onClick = {e => handleOperation(e, 'value')} className =  'btn-ind-small' id = "fraction">1/x</button>       
+              <button value = {'÷'} onClick = {e => handleOperation(e, 'value')} className =  'btn-ind-small btn-right' id = "divide">÷</button>       
+            </div>
+            <div className = 'btn-row'>
+              <button className='btn-ind-small'>x!</button>
+              <button className='btn-ind-small'>x²</button>
+              <button className='btn-ind-small'>x^y</button> 
+              <button value = {'7'} onClick = {e => handleNumberInput(e, 'value')} className =  'btn-ind-small' id = "seven">7</button>
+              <button value = {'8'} onClick = {e => handleNumberInput(e, 'value')} className =  'btn-ind-small' id = "eight">8</button>
+              <button value = {'9'} onClick = {e => handleNumberInput(e, 'value')} className =  'btn-ind-small' id = "nine">9</button>
+              <button value = {'x'} onClick = {e => handleOperation(e, 'value')} className =  'btn-ind-small btn-right' id = "multiply">x</button>
+            </div>
+            <div className = 'btn-row'> 
+              <button className='btn-ind-small'>π</button>
+              <button className='btn-ind-small'>ln</button>
+              <button className='btn-ind-small'>log</button>
+              <button value = {'4'} onClick = {e => handleNumberInput(e, 'value')} className =  'btn-ind-small' id = "four">4</button>
+              <button value = {'5'} onClick = {e => handleNumberInput(e, 'value')} className =  'btn-ind-small' id = "five">5</button>
+              <button value = {'6'} onClick = {e => handleNumberInput(e, 'value')} className =  'btn-ind-small' id = "six">6</button>
+              <button value = {'-'} onClick = {e => handleOperation(e, 'value')} className =  'btn-ind-small btn-right' id = "subtract">-</button>
+            </div>
+            <div className = 'btn-row'> 
+              <button className='btn-ind-small'>√</button>
+              <button className='btn-ind-small'>∛</button>
+              <button className='btn-ind-small'>n√x</button>
+              <button value = {'1'} onClick = {e => handleNumberInput(e, 'value')} className =  'btn-ind-small' id = "one">1</button>
+              <button value = {'2'} onClick = {e => handleNumberInput(e, 'value')} className =  'btn-ind-small' id = "two">2</button>
+              <button value = {'3'} onClick = {e => handleNumberInput(e, 'value')} className =  'btn-ind-small' id = "three">3</button>
+              <button value = {'+'} onClick = {e => handleOperation(e, 'value')} className =  'btn-ind-small btn-right' id = "add">+</button>
+            </div>
+            <div className = 'btn-row'>
+              <button className='btn-ind-small'>(</button>
+              <button className='btn-ind-small'>)</button>
+              <button className='btn-ind-small'>EE</button>
+              <button value = {'0'} onClick = {e => handleNumberInput(e, 'value')} className =   "btn-ind-small bottom" id = "zero">0</button>
+              <button value = {'.'} onClick = {e => handleNumberInput(e, 'value')} className =  'btn-ind-small bottom' id = "decimal">.</button>
+              <button onClick = {() => handleBackSpace()} className =   "btn-ind-small" id = "backSpace" >⌫</button>
+              <button onClick = {()=> handleEquals()} className =  'btn-ind-small btn-right bottom' id = "equals">=</button>
+              </div>
+        </div>
+      </div>
+    );
+  } else {
   return (
     <div id = 'container'>
       <div id = 'calculator'>
-        <nav className =  'window-controls'>
-          <div className =  'maximize'>Calculator</div>
-          <div className =  'minimize'></div>
+        <nav className = 'window-controls'>
+          <div className = 'maximize'>Calculator</div>
+          <div className = 'minimize'></div>
         </nav>
         <div id = 'calculatorheader'>
           <button>x</button>
           <button onClick={()=> minimize()}>-</button>
-          <button onClick={() => maximize()}>+</button>
+          <button onClick={() => setExtendStyle(!extendStyle)}>+</button>
         </div>
           <div id = 'display' style={state}>{input}</div>
           <div className =  'btn-row'> 
@@ -278,25 +371,25 @@ function App() {
             <button value = {'fraction'} onClick = {e => handleOperation(e, 'value')} className =  'btn-ind-small' id = "fraction">1/x</button>       
             <button value = {'÷'} onClick = {e => handleOperation(e, 'value')} className =  'btn-ind-small btn-right' id = "divide">÷</button>       
           </div>
-          <div className =  'btn-row'> 
+          <div className = 'btn-row'> 
             <button value = {'7'} onClick = {e => handleNumberInput(e, 'value')} className =  'btn-ind-small' id = "seven">7</button>
             <button value = {'8'} onClick = {e => handleNumberInput(e, 'value')} className =  'btn-ind-small' id = "eight">8</button>
             <button value = {'9'} onClick = {e => handleNumberInput(e, 'value')} className =  'btn-ind-small' id = "nine">9</button>
             <button value = {'x'} onClick = {e => handleOperation(e, 'value')} className =  'btn-ind-small btn-right' id = "multiply">x</button>
           </div>
-          <div className =  'btn-row'> 
+          <div className = 'btn-row'> 
             <button value = {'4'} onClick = {e => handleNumberInput(e, 'value')} className =  'btn-ind-small' id = "four">4</button>
             <button value = {'5'} onClick = {e => handleNumberInput(e, 'value')} className =  'btn-ind-small' id = "five">5</button>
             <button value = {'6'} onClick = {e => handleNumberInput(e, 'value')} className =  'btn-ind-small' id = "six">6</button>
             <button value = {'-'} onClick = {e => handleOperation(e, 'value')} className =  'btn-ind-small btn-right' id = "subtract">-</button>
           </div>
-          <div className =  'btn-row'> 
+          <div className = 'btn-row'> 
             <button value = {'1'} onClick = {e => handleNumberInput(e, 'value')} className =  'btn-ind-small' id = "one">1</button>
             <button value = {'2'} onClick = {e => handleNumberInput(e, 'value')} className =  'btn-ind-small' id = "two">2</button>
             <button value = {'3'} onClick = {e => handleNumberInput(e, 'value')} className =  'btn-ind-small' id = "three">3</button>
             <button value = {'+'} onClick = {e => handleOperation(e, 'value')} className =  'btn-ind-small btn-right' id = "add">+</button>
           </div>
-          <div className =  'btn-row'>
+          <div className = 'btn-row'>
             <button value = {'0'} onClick = {e => handleNumberInput(e, 'value')} className =   "btn-ind-small bottom" id = "zero">0</button>
             <button value = {'.'} onClick = {e => handleNumberInput(e, 'value')} className =  'btn-ind-small bottom' id = "decimal">.</button>
             <button onClick = {() => handleBackSpace()} className =   "btn-ind-small" id = "backSpace" >⌫</button>
@@ -306,10 +399,12 @@ function App() {
       </div>
 
   );
+  }
 }
 
 const calculate = (input) => { 
   let inputCopy = [...input];
+  // console.log("calc", inputCopy);
   const negativeCheck = (index) => {
     if (index === 0 || inputCopy[index - 1] === 'x' || inputCopy[index - 1] === '+' || inputCopy[index - 1] === '÷') {
       var negativeTemp = [];
@@ -365,6 +460,7 @@ const calculate = (input) => {
       }
       return (countLeft);
   }
+
   for (let i = 0; i <inputCopy.length; i++) {
     if (inputCopy[i] === '-') negativeCheck(i);
   }
@@ -380,9 +476,13 @@ const calculate = (input) => {
       i = i - combine(inputCopy[i], i);
     }
   } 
-  var decimalAmount = decimalPlaces(inputCopy[0]);
-  inputCopy[0] = +inputCopy[0].toFixed(8); //plus sign gets rid of trailing zeroes, rounds to 8th decimal place
+  // var decimalAmount = decimalPlaces(inputCopy[0]);
+  // console.log("decimal amount", decimalAmount);
+  if (inputCopy[0] > 1) {
+    inputCopy[0] = +inputCopy[0].toFixed(8); //plus sign gets rid of trailing zeroes, rounds to 8th decimal place
+  }
   //run numberAmount func
+  // console.log("after calc", inputCopy)
   return inputCopy;
 }
 const decimalCheck = function(input) { 
@@ -405,20 +505,21 @@ const decimalCheck = function(input) {
   }
 }
 
-const decimalPlaces = (n) => {
+const decimalPlaces = (n) => { //needs to be fixed
   var s = "" + (+n);
-  var match = /(?:\.(\d+))?(?:[eE]([+\-]?\d+))?$/.exec(s);
+  var match = /(?:\.(\d+))?(?:[eE]([+-]?\d+))?$/.exec(s);
   if (!match) return 0;
   return Math.max(0, (match[1] === '0' ? 0 : (match[1] || '').length) - (match[2] || 0));
 }
-const formatByNumberAmount = (input) => {
+const formatByNumberAmount = (input) => { //needs to be fixed
   var decimalAmount = decimalPlaces(input); //shows number of decimal places
   var digitAmount = Math.log(input) * Math.LOG10E + 1 | 0; //shows number of digits
+  // console.log("digitamount", digitAmount)
   if (digitAmount === 1 && input[0] < 1) { //a decimal number, check if scienfitic notation is needed?
     return +input[0].toFixed(8); //scientific notation starts at 1e16 for mac calc, 1e12 for android calc
-  } //1e-16 for mac calc, 1e-5 or -8 for andorid, 
+  } //1e-16 for mac calc, 1e-5 or -8 for android, 
   else {
-    return +input[0].toFixed(8 - digitAmount + 2); //change fontsize to show entire number up until certain point
+    return +input[0].toFixed(8 - digitAmount + 2); 
   }
 }
 

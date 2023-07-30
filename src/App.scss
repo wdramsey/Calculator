@@ -1,5 +1,6 @@
 #container {
 	border: 1px solid black;
+	background-color: #482206;
 	position: absolute;
 	left: 150px;
 	top: 75px;
@@ -20,6 +21,34 @@
   cursor: move;
   background-color: #cacacc;
 }
+#display {
+	background-color: #cacacc;
+	width: 220px; 
+	text-align: right;
+	height: 50px;
+	line-height: 50px;
+}
+#calculatorExtended {
+  position: relative;
+  top: 150px;
+  left: 175px;
+  border: 2px solid #848484;
+  box-shadow: 4px 4px 4px;
+  width: 385px;
+}
+#calculatorheaderExtended {
+  height: 20px;
+  width: 385px;
+  cursor: move;
+  background-color: #cacacc;
+}
+#displayExtended {
+	background-color: #cacacc;
+	width: 385px; 
+	text-align: right;
+	height: 50px;
+	line-height: 50px;
+}
 .btn-ind-large {
   width: 165px;
   height: 45px;
@@ -34,13 +63,6 @@
   width: 55px;
   height: 45px;
   font-size: 1.4em;
-}
-#display {
-  background-color: #cacacc;
-  width: 220px;
-  text-align: right;
-  height: 50px;
-  line-height: 50px;
 }
 .btn-right {
   background-color: orange;
